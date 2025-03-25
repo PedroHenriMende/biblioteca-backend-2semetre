@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS Aluno (
     celular VARCHAR (20) NOT NULL
 );
 
+-- Criar a função gerar_ra apenas se não existir
 CREATE OR REPLACE FUNCTION gerar_ra() RETURNS TRIGGER AS $$
 BEGIN
     NEW.ra := 'AAA' || TO_CHAR(nextval('seq_ra'), 'FM0000');
@@ -41,9 +42,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_gerar_ra
-BEFORE INSERT ON Aluno
-FOR EACH ROW EXECUTE FUNCTION gerar_ra();
+-- Criar a trigger trg_gerar_ra apenas se não existir
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_gerar_ra') THEN
+        CREATE TRIGGER trg_gerar_ra
+        BEFORE INSERT ON Aluno
+        FOR EACH ROW EXECUTE FUNCTION gerar_ra();
+    END IF;
+END $$;
 
 -- CREATE LIVRO
 CREATE TABLE IF NOT EXISTS Livro (
@@ -79,29 +86,30 @@ CREATE TABLE IF NOT EXISTS Usuario (
     senha VARCHAR(50) NOT NULL
 );
 
--- Criar a função que define a senha padrão
+-- Criar a função gerar_senha_padrao apenas se não existir
 CREATE OR REPLACE FUNCTION gerar_senha_padrao()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Define a senha como 'username' + '1234'
     NEW.senha := NEW.username || '1234';
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Criar a trigger que chama a função antes da inserção
-CREATE TRIGGER trigger_gerar_senha
-BEFORE INSERT ON Usuario
-FOR EACH ROW
-EXECUTE FUNCTION gerar_senha_padrao();
+-- Criar a trigger trigger_gerar_senha apenas se não existir
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trigger_gerar_senha') THEN
+        CREATE TRIGGER trigger_gerar_senha
+        BEFORE INSERT ON Usuario
+        FOR EACH ROW
+        EXECUTE FUNCTION gerar_senha_padrao();
+    END IF;
+END $$;
 
-SELECT * FROM emprestimo;
-SELECT * FROM aluno;
-SELECT * FROM livro;
-
-ALTER TABLE aluno ADD COLUMN status_aluno BOOLEAN DEFAULT TRUE;
-ALTER TABLE emprestimo ADD COLUMN status_emprestimo_registro BOOLEAN DEFAULT TRUE;
-ALTER TABLE livro ADD COLUMN status_livro BOOLEAN DEFAULT TRUE;
+-- Criar as colunas na tabela Aluno, Emprestimo e Livro, se ainda não existirem
+ALTER TABLE IF EXISTS Aluno ADD COLUMN IF NOT EXISTS status_aluno BOOLEAN DEFAULT TRUE;
+ALTER TABLE IF EXISTS Emprestimo ADD COLUMN IF NOT EXISTS status_emprestimo_registro BOOLEAN DEFAULT TRUE;
+ALTER TABLE IF EXISTS Livro ADD COLUMN IF NOT EXISTS status_livro BOOLEAN DEFAULT TRUE;
 
 -- ALUNO
 INSERT INTO Aluno (nome, sobrenome, data_nascimento, endereco, email, celular) 
