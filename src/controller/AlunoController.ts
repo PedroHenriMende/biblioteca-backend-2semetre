@@ -25,15 +25,19 @@ class AlunoController extends Aluno {
      * @param res Objeto de resposta HTTP.
      * @returns Lista de alunos em formato JSON.
      */
-    static async todos(req: Request, res: Response) {
+    static async todos(req: Request, res: Response): Promise<Response> {
         try {
+            // recupera a lista de alunos do sistema
             const listaDeAlunos = await Aluno.listarAlunos();
 
-            res.status(200).json(listaDeAlunos);
+            // retorna a lista de aluno no formato JSON
+            return res.status(200).json(listaDeAlunos);
         } catch (error) {
+            // lança detalhes do erro no console
             console.log(`Erro ao acessar método herdado: ${error}`);
 
-            res.status(400).json("Erro ao recuperar as informações do Aluno");
+            // retorna uma mensagem de erro ao cliente
+            return res.status(400).json({ mensagem: "Erro ao recuperar as informações do aluno. Entre em contato com o administrador do sistema para mais detalhes." });
         }
     }
 
@@ -43,10 +47,15 @@ class AlunoController extends Aluno {
      * @param res Objeto de resposta HTTP.
      * @returns Mensagem de sucesso ou erro em formato JSON.
      */
-    static async cadastrar(req: Request, res: Response) {
+    static async cadastrar(req: Request, res: Response): Promise<Response> {
         try {
             // Desestruturando objeto recebido pelo front-end
             const dadosRecebidos: AlunoDTO = req.body;
+
+            if(!dadosRecebidos.nome || !dadosRecebidos.sobrenome || !dadosRecebidos.email || !dadosRecebidos.celular) {
+                console.log("Parâmetros obrigatórios não informados");
+                return res.status(406).json({ mensagem: "Parâmetros obrigatórios não informados."});
+            }
             
             // Instanciando objeto Aluno
             const novoAluno = new Aluno(
@@ -61,15 +70,21 @@ class AlunoController extends Aluno {
             // Chama o método para persistir o aluno no banco de dados
             const result = await Aluno.cadastrarAluno(novoAluno);
 
-            // Verifica se a query foi executada com sucesso
-            if (result) {
-                return res.status(200).json(`Aluno cadastrado com sucesso`);
-            } else {
-                return res.status(400).json('Não foi possível cadastrar o aluno no banco de dados');
+            switch (result) {
+                case 0:
+                    return res.status(400).json({ mensagem: 'Erro ao cadastrar aluno. Entre em contato com o administrador do sistema para mais detalhes.'});
+                case 1:
+                    return res.status(201).json({ mensagem: 'Aluno cadastrado com sucesso!'});
+                case 9:
+                    return res.status(406).json({ mensagem: 'Parâmetros obrigatórios não informados.'});
+                default:
+                    return res.status(400).json({ mensagem: 'Erro ao cadastrar aluno. Entre em contato com o administrador do sistema para mais detalhes.'});
             }
         } catch (error) {
+            // lança detalhes do erro no console
             console.log(`Erro ao cadastrar o aluno: ${error}`);
-            return res.status(400).json('Erro ao cadastrar o aluno');
+            // retorna mensagem de erro ao cliente
+            return res.status(400).json({ mensagem: 'Erro ao cadastrar o aluno. Entre em contato com o administrador do sistema para mais detalhes.' });
         }
     }
 
@@ -86,13 +101,13 @@ class AlunoController extends Aluno {
             
             switch (result) {
                 case 0:
-                    return res.status(400).json('Erro ao deletar aluno.');
+                    return res.status(400).json('Erro ao deletar aluno. Entre em contato com o administrador do sistema para mais detalhes.');
                 case 1:
                     return res.status(200).json('Aluno removido com sucesso.');
-                case 99:
+                case 9:
                     return res.status(400).json('Aluno não encontrado.');
                 default:
-                    return res.status(400).json('Erro ao deletar aluno.');
+                    return res.status(400).json('Erro ao deletar aluno. Entre em contato com o administrador do sistema para mais detalhes.');
             }
         } catch (error) {
             console.log("Erro ao remover o Aluno");
@@ -117,20 +132,26 @@ class AlunoController extends Aluno {
             const aluno = new Aluno(
                 dadosRecebidos.nome,
                 dadosRecebidos.sobrenome,
-                dadosRecebidos.dataNascimento ?? new Date("1900-01-01"),
+                dadosRecebidos.dataNascimento ?? new Date('1900-01-01'),
                 dadosRecebidos.endereco ?? '',
-                dadosRecebidos.email ?? '',
+                dadosRecebidos.email,
                 dadosRecebidos.celular              
             );
 
             // Define o ID do aluno, que deve ser passado na query string
             aluno.setIdAluno(parseInt(req.query.idAluno as string));
 
-            // Chama o método para atualizar o cadastro do aluno no banco de dados
-            if (await Aluno.atualizarCadastroAluno(aluno)) {
-                return res.status(200).json({ mensagem: "Cadastro atualizado com sucesso!" });
-            } else {
-                return res.status(400).json('Não foi possível atualizar o aluno no banco de dados');
+            const result = await Aluno.atualizarAluno(aluno);
+
+            switch (result) {
+                case 0:
+                    return res.status(400).json({ mensagem: 'Erro ao atualizar aluno. Entre em contato com o administrador do sistema para mais detalhes.'});
+                case 1:
+                    return res.status(201).json({ mensagem: 'Aluno atualizado com sucesso!'});
+                case 9:
+                    return res.status(406).json({ mensagem: 'Aluno não encontrado.'});
+                default:
+                    return res.status(400).json({ mensagem: 'Erro ao atualizar aluno. Entre em contato com o administrador do sistema para mais detalhes.'});
             }
         } catch (error) {
             // Caso ocorra algum erro, este é registrado nos logs do servidor
