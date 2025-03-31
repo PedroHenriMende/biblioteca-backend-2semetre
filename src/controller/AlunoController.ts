@@ -84,10 +84,15 @@ class AlunoController extends Aluno {
             const idAluno = parseInt(req.query.idAluno as string);
             const result = await Aluno.removerAluno(idAluno);
             
-            if (result) {
-                return res.status(200).json('Aluno removido com sucesso');
-            } else {
-                return res.status(401).json('Erro ao deletar aluno');
+            switch (result) {
+                case 0:
+                    return res.status(400).json('Erro ao deletar aluno.');
+                case 1:
+                    return res.status(200).json('Aluno removido com sucesso.');
+                case 99:
+                    return res.status(400).json('Aluno não encontrado.');
+                default:
+                    return res.status(400).json('Erro ao deletar aluno.');
             }
         } catch (error) {
             console.log("Erro ao remover o Aluno");
