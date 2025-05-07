@@ -1,3 +1,4 @@
+
 /*
 -- Drop da trigger
 DROP TRIGGER IF EXISTS trg_gerar_ra ON Aluno;
